@@ -56,7 +56,9 @@ describe("RenderHTML Component", () => {
   it("should render transformed glossary paragraph tags", () => {
     const html = "<glossaryparagraph>Test paragraph</glossaryparagraph>";
     render(<RenderHTML data={html} />);
-    expect(screen.getByTestId("glossary-paragraph")).toBeTruthy();
+    expect(screen.getAllByTestId("glossary-paragraph").length).toBeGreaterThan(
+      0
+    );
     expect(screen.getByText("Test paragraph")).toBeTruthy();
   });
 
@@ -260,6 +262,14 @@ describe("RenderHTML Component", () => {
       const columnDiv = container.querySelector("div.chapter.glossary-column");
       expect(columnDiv).toBeTruthy();
       expect(columnDiv.textContent).toContain("Hello Column");
+    });
+
+    it("should unwrap custom container tags without rendering container elements", () => {
+      const html = "<container><p>Wrapped content</p></container>";
+      const { container } = render(<RenderHTML data={html} />);
+
+      expect(container.querySelector("container")).toBeNull();
+      expect(screen.getByText("Wrapped content")).toBeTruthy();
     });
   });
 

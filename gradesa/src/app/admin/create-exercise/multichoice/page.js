@@ -20,12 +20,13 @@ export default function CreateMultichoicePage() {
     { id: "4", type: "text", value: "Berliner" },
   ]);
 
-  // Which dropdown is currently being edited? (Index of the section)
-  const [activeDropdownIndex, setActiveDropdownIndex] = useState(null);
+  // Which section is currently being edited? (Index of the section)
+  const [activeSectionIndex, setActiveSectionIndex] = useState(null);
 
   const [showPreview, setShowPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [titleError, setTitleError] = useState(false);
 
   // --- Actions ---
 
@@ -48,7 +49,25 @@ export default function CreateMultichoicePage() {
       },
     ]);
     // Automatically select the new dropdown for editing
-    setActiveDropdownIndex(newIndex);
+    setActiveSectionIndex(newIndex);
+  };
+
+  const addGapSection = () => {
+    const newIndex = sections.length;
+    setSections([
+      ...sections,
+      {
+        id: crypto.randomUUID(),
+        type: "gap",
+        value: "___",
+        correct: "",
+      },
+    ]);
+    setActiveSectionIndex(newIndex);
+  };
+
+  const addLineBreakSection = () => {
+    setSections([...sections, { id: crypto.randomUUID(), type: "linebreak" }]);
   };
 
   const handleTextChange = (index, newValue) => {
@@ -60,7 +79,7 @@ export default function CreateMultichoicePage() {
   const removeSection = (index) => {
     const newSections = sections.filter((_, i) => i !== index);
     setSections(newSections);
-    if (activeDropdownIndex === index) setActiveDropdownIndex(null);
+    if (activeSectionIndex === index) setActiveSectionIndex(null);
   };
 
   // --- Backend Submission ---
@@ -69,6 +88,7 @@ export default function CreateMultichoicePage() {
     try {
       setIsSubmitting(true);
       setError("");
+      setTitleError(false);
 
       // --- FIX 1: Convert Index to Text for correct answer ---
       const contentToSave = sections.map((section) => {
@@ -93,6 +113,7 @@ export default function CreateMultichoicePage() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 409) setTitleError(true);
         throw new Error(data.error || "Fehler beim Speichern");
       }
 
@@ -114,11 +135,19 @@ export default function CreateMultichoicePage() {
       <div className="form-group">
         <label>Titel</label>
         <input
-          className="form-input"
+          className={`form-input${titleError ? " input-error" : ""}`}
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            setTitleError(false);
+          }}
           placeholder="Titel der Übung"
         />
+        {titleError && (
+          <span className="field-error-hint">
+            Dieser Titel existiert bereits. Bitte wähle einen anderen.
+          </span>
+        )}
       </div>
       <hr className="divider" />
 
@@ -145,18 +174,33 @@ export default function CreateMultichoicePage() {
                   </button>
                 </div>
               );
-            } else {
-              // Multichoice Block
-              const isActive = activeDropdownIndex === index;
+            }
+            if (section.type === "linebreak") {
+              return (
+                <div
+                  key={section.id}
+                  className="inline-block-wrapper linebreak-block"
+                >
+                  <span className="linebreak-indicator">↵</span>
+                  <button
+                    onClick={() => removeSection(index)}
+                    className="delete-x"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            }
+            if (section.type === "gap") {
+              const isActive = activeSectionIndex === index;
+
               return (
                 <div key={section.id} className="inline-block-wrapper">
                   <button
-                    onClick={() => setActiveDropdownIndex(index)}
+                    onClick={() => setActiveSectionIndex(index)}
                     className={`dropdown-placeholder ${isActive ? "active" : ""}`}
                   >
-                    {/* Show the Correct Answer or "Dropdown" if empty */}
-                    {section.options[section.correct] || "Dropdown"}
-                    <span className="icon">▼</span>
+                    {section.correct || "Lücke"}
                   </button>
                   <button
                     onClick={() => removeSection(index)}
@@ -167,85 +211,138 @@ export default function CreateMultichoicePage() {
                 </div>
               );
             }
+            // Multichoice Block
+            const isActive = activeSectionIndex === index;
+            return (
+              <div key={section.id} className="inline-block-wrapper">
+                <button
+                  onClick={() => setActiveSectionIndex(index)}
+                  className={`dropdown-placeholder ${isActive ? "active" : ""}`}
+                >
+                  {/* Show the Correct Answer or "Dropdown" if empty */}
+                  {section.options[section.correct] || "Dropdown"}
+                  <span className="icon">▼</span>
+                </button>
+                <button
+                  onClick={() => removeSection(index)}
+                  className="delete-x"
+                >
+                  ×
+                </button>
+              </div>
+            );
           })}
         </div>
 
         {/* --- Buttons to add new parts --- */}
         <div className="action-row">
-          <Button size="sm" onClick={addTextSection}>
+          <Button size="sm" width="fit" onClick={addTextSection}>
             + Text
           </Button>
-          <Button size="sm" onClick={addMultiChoiceSection}>
-            + Dropdown
+          <Button size="sm" width="fit" onClick={addMultiChoiceSection}>
+            + Runterfallen
+          </Button>
+          <Button size="sm" width="fit" onClick={addGapSection}>
+            + Lücke
+          </Button>
+          <Button size="sm" width="fit" onClick={addLineBreakSection}>
+            + Zeilenumbruch
           </Button>
         </div>
       </div>
 
-      {/* --- Dropdown Editor (Only shows if a dropdown is clicked) --- */}
-      {activeDropdownIndex !== null && sections[activeDropdownIndex] && (
-        <div className="dropdown-editor-panel">
-          <h3>Optionen bearbeiten</h3>
-          <p className="hint">
-            Wähle den Radio-Button für die richtige Antwort.
-          </p>
+      {activeSectionIndex !== null &&
+        sections[activeSectionIndex] &&
+        sections[activeSectionIndex].type === "gap" && (
+          <div className="dropdown-editor-panel">
+            <h3>Lücke bearbeiten</h3>
+            <p className="hint">
+              Gib die korrekte Antwort für diese Lücke ein.
+            </p>
 
-          {sections[activeDropdownIndex].options.map((opt, optIndex) => (
-            <div key={optIndex} className="option-row">
-              <input
-                type="radio"
-                name="correct-answer"
-                checked={sections[activeDropdownIndex].correct === optIndex}
-                onChange={() => {
-                  const newSections = [...sections];
-                  newSections[activeDropdownIndex].correct = optIndex;
-                  setSections(newSections);
-                }}
-              />
+            <div className="form-group">
+              <label>Korrekte Antwort</label>
               <input
                 type="text"
-                value={opt}
+                value={sections[activeSectionIndex].correct}
                 onChange={(e) => {
                   const newSections = [...sections];
-                  newSections[activeDropdownIndex].options[optIndex] =
-                    e.target.value;
+                  newSections[activeSectionIndex].correct = e.target.value;
                   setSections(newSections);
                 }}
-                className="form-input option-input"
+                className="form-input"
+                placeholder="Korrekte Antwort"
               />
-              <button
-                className="delete-btn"
-                onClick={() => {
-                  const newSections = [...sections];
-                  newSections[activeDropdownIndex].options = newSections[
-                    activeDropdownIndex
-                  ].options.filter((_, i) => i !== optIndex);
-                  // Reset correct index if needed
-                  if (newSections[activeDropdownIndex].correct >= optIndex) {
-                    newSections[activeDropdownIndex].correct = 0;
-                  }
-                  setSections(newSections);
-                }}
-              >
-                🗑
-              </button>
             </div>
-          ))}
+          </div>
+        )}
+      {/* --- Dropdown Editor (Only shows if a dropdown is clicked) --- */}
+      {activeSectionIndex !== null &&
+        sections[activeSectionIndex] &&
+        sections[activeSectionIndex].type === "multichoice" && (
+          <div className="dropdown-editor-panel">
+            <h3>Optionen bearbeiten</h3>
+            <p className="hint">
+              Wähle den Radio-Button für die richtige Antwort.
+            </p>
 
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              const newSections = [...sections];
-              newSections[activeDropdownIndex].options.push(
-                `Option ${newSections[activeDropdownIndex].options.length + 1}`
-              );
-              setSections(newSections);
-            }}
-          >
-            + Weitere Option
-          </Button>
-        </div>
-      )}
+            {sections[activeSectionIndex].options.map((opt, optIndex) => (
+              <div key={optIndex} className="option-row">
+                <input
+                  type="radio"
+                  name="correct-answer"
+                  checked={sections[activeSectionIndex].correct === optIndex}
+                  onChange={() => {
+                    const newSections = [...sections];
+                    newSections[activeSectionIndex].correct = optIndex;
+                    setSections(newSections);
+                  }}
+                />
+                <input
+                  type="text"
+                  value={opt}
+                  onChange={(e) => {
+                    const newSections = [...sections];
+                    newSections[activeSectionIndex].options[optIndex] =
+                      e.target.value;
+                    setSections(newSections);
+                  }}
+                  className="form-input option-input"
+                />
+                <button
+                  className="delete-btn"
+                  onClick={() => {
+                    const newSections = [...sections];
+                    newSections[activeSectionIndex].options = newSections[
+                      activeSectionIndex
+                    ].options.filter((_, i) => i !== optIndex);
+                    // Reset correct index if needed
+                    if (newSections[activeSectionIndex].correct >= optIndex) {
+                      newSections[activeSectionIndex].correct = 0;
+                    }
+                    setSections(newSections);
+                  }}
+                >
+                  🗑
+                </button>
+              </div>
+            ))}
+
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                const newSections = [...sections];
+                newSections[activeSectionIndex].options.push(
+                  `Option ${newSections[activeSectionIndex].options.length + 1}`
+                );
+                setSections(newSections);
+              }}
+            >
+              + Weitere Option
+            </Button>
+          </div>
+        )}
 
       <hr className="divider" />
 
@@ -278,7 +375,7 @@ export default function CreateMultichoicePage() {
                   <span key={i} className="preview-text">
                     {s.value}&nbsp;
                   </span>
-                ) : (
+                ) : s.type === "multichoice" ? (
                   <select key={i} className="preview-select">
                     <option value="">???</option>
                     {s.options.map((opt, k) => (
@@ -287,7 +384,17 @@ export default function CreateMultichoicePage() {
                       </option>
                     ))}
                   </select>
-                )
+                ) : s.type === "gap" ? (
+                  <input
+                    key={i}
+                    type="text"
+                    className="preview-select"
+                    placeholder="..."
+                    disabled
+                  />
+                ) : s.type === "linebreak" ? (
+                  <br key={i} />
+                ) : null
               )}
             </div>
 

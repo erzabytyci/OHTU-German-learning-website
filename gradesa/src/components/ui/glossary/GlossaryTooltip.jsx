@@ -7,10 +7,15 @@ import { createPortal } from "react-dom";
 export default function GlossaryTooltip({ word, children }) {
   const { wordMap, isLoading } = useGlossary();
   const [isOpen, setIsOpen] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState({ left: 0, top: 0 });
+  const [tooltipPosition, setTooltipPosition] = useState({
+    left: 0,
+    top: 0,
+    transform: "translate(-50%, -100%)",
+  });
   const wordRef = useRef(null);
   const tooltipRef = useRef(null);
   const [portalElement, setPortalElement] = useState(null);
+  const [tooltipHeight, setTooltipHeight] = useState(0);
 
   const lowercaseWord = word.toLowerCase();
   const entry = wordMap[lowercaseWord];
@@ -24,14 +29,42 @@ export default function GlossaryTooltip({ word, children }) {
   }, []);
 
   useEffect(() => {
-    if (isOpen && wordRef.current) {
+    if (isOpen && wordRef.current && tooltipRef.current) {
       const rect = wordRef.current.getBoundingClientRect();
+      const tooltipRect = tooltipRef.current.getBoundingClientRect();
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
       const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+      const viewportHeight = window.innerHeight;
+
+      setTooltipHeight(tooltipRect.height);
+      const spaceAbove = rect.top;
+      const spaceBelow = viewportHeight - rect.bottom;
+
+      const topAbove = rect.top + scrollTop - 10;
+      const topBelow = rect.bottom + scrollTop + 10;
+
+      let top, transform;
+      if (spaceBelow >= tooltipRect.height + 10) {
+        top = topBelow;
+        transform = "translate(-50%, 0%)";
+      } else if (spaceAbove >= tooltipRect.height + 10) {
+        top = topAbove;
+        transform = "translate(-50%, -100%)";
+      } else {
+        top = Math.max(
+          scrollTop + 10,
+          Math.min(
+            scrollTop + viewportHeight - tooltipRect.height - 10,
+            topBelow
+          )
+        );
+        transform = "translate(-50%, 0%)";
+      }
 
       setTooltipPosition({
         left: rect.left + scrollLeft + rect.width / 2,
-        top: rect.top + scrollTop - 10,
+        top,
+        transform,
       });
     }
   }, [isOpen]);
@@ -75,12 +108,12 @@ export default function GlossaryTooltip({ word, children }) {
         createPortal(
           <div
             ref={tooltipRef}
-            className={styles.tooltip}
+            className={`${styles.tooltip} ${tooltipPosition.transform === "translate(-50%, 0%)" ? styles.tooltipBelow : styles.tooltipAbove}`}
             style={{
               position: "absolute",
               left: `${tooltipPosition.left}px`,
               top: `${tooltipPosition.top}px`,
-              transform: "translate(-50%, -100%)",
+              transform: tooltipPosition.transform,
             }}
           >
             <h4 className={styles.tooltipTitle}>{entry.word}</h4>

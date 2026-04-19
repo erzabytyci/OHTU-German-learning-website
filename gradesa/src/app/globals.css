@@ -388,6 +388,7 @@ h2 {
 
 ul {
   list-style-type: circle;
+  padding-left: 1rem;
 }
 
 p {
@@ -472,4 +473,72 @@ label {
   margin-bottom: var(--u-lg);
   text-align: center;
   margin-top: var(--u-lg);
+}
+
+.rendered-html p {
+  margin-bottom: 1em;
+  white-space: pre-wrap;
+}
+
+.rendered-html p:last-child {
+  margin-bottom: 0;
+}
+
+.rendered-html li {
+  margin-bottom: 0.35em;
+}
+
+.rendered-html ul,
+.rendered-html ol {
+  padding-left: 3rem;
+  margin-bottom: 1em;
+}
+
+.rendered-html li[data-list="bullet"] {
+  list-style-type: disc;
+}
+
+.rendered-html li[data-list="ordered"] {
+  list-style-type: decimal;
+}
+
+.rendered-html .ql-size-small {
+  font-size: 0.75em;
+}
+
+.rendered-html .ql-size-large {
+  font-size: 1.5em;
+}
+
+.rendered-html .ql-size-huge {
+  font-size: 2.5em;
+}
+
+.rendered-html img {
+  max-width: 100%;
+  height: auto;
+}
+
+.ql-table-menus,
+.ql-table-dropdown,
+.ql-table-tooltip {
+  background: #fff !important;
+  color: #000 !important;
+  border-color: #ccc !important;
+}
+
+.ql-table-menus *,
+.ql-table-dropdown *,
+.ql-table-tooltip * {
+  color: #000 !important;
+}
+
+.ql-table-menus svg,
+.ql-table-dropdown svg,
+.ql-table-tooltip svg,
+.ql-table-menus path,
+.ql-table-dropdown path,
+.ql-table-tooltip path {
+  fill: #000 !important;
+  stroke: #000 !important;
 }

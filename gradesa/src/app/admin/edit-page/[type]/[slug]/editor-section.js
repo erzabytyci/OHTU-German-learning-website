@@ -5,30 +5,69 @@ import { Column, Row } from "@/components/ui/layout/container";
 import { Button } from "@/components/ui/button";
 import Editor from "@/components/ui/editor";
 import layout from "@/shared/styles/layout.module.css";
-import { useUser } from "@/context/user.context";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function EditorSection({
   initialContent,
+  initialDescription,
   type,
   slug,
   title,
   page_order,
+  pageExists,
 }) {
   const [editorContent, setEditorContent] = useState(initialContent);
+  const [descriptionInput, setDescriptionInput] = useState(initialDescription);
   const [editorMessage, setEditorMessage] = useState({ error: false, msg: "" });
   const [titleInput, setTitleInput] = useState(title);
-  const [slugInput, setSlugInput] = useState(slug);
-  const { setActAs } = useUser();
+  const supportsDescription = type === "communications";
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view");
+
+  /**  After closing or saving the editor, return the user to the same grammar view
+   * (topics or alphabetical) they came from. */
+  const getViewPath = (type, slugValue) => {
+    if (type === "grammar") {
+      const query = view ? `?view=${view}` : "";
+      return `/grammar/themes/${slugValue}${query}`;
+    }
+    return `/pages/${type}/${slugValue}`;
+  };
 
   const submitEditorContent = async () => {
     // A naive approach with string replacement is used here.
-    const jsonData = JSON.stringify({
+    const requestBody = {
       content: editorContent.replace(/&nbsp;/g, " "),
       title: titleInput,
-      slug: slugInput,
-    });
+    };
+
+    if (supportsDescription) {
+      requestBody.description = descriptionInput;
+    }
+
+    const jsonData = JSON.stringify(requestBody);
+
+    if (!pageExists && type === "grammar") {
+      const createRes = await fetch(`/api/admin/pages/${type}/${slug}`, {
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+          title: titleInput,
+        }),
+      });
+
+      if (!createRes.ok && createRes.status !== 200) {
+        setEditorMessage({
+          error: true,
+          msg: "Fehler beim Erstellen der Seite.",
+        });
+        return;
+      }
+    }
     const res = await fetch(`/api/admin/pages/${type}/${slug}`, {
       headers: {
         Accept: "application/json",
@@ -37,13 +76,18 @@ export default function EditorSection({
       method: "PUT",
       body: jsonData,
     });
+
     if (res.status == 200) {
       setEditorMessage({ error: false, msg: "Updated successfully" });
-      router.push(`/admin/edit-page/${type}/${slugInput}`);
+      router.push(getViewPath(type, slug));
     } else {
-      setEditorMessage({ error: true, msg: res.text() });
+      const errorText = await res.text();
+      setEditorMessage({
+        error: true,
+        msg: errorText || "Fehler beim Speichern.",
+      });
     }
-    setTimeout(() => setEditorMessage({ error: false, content: "" }), 1000);
+    setTimeout(() => setEditorMessage({ error: false, msg: "" }), 1000);
   };
 
   return (
@@ -51,8 +95,7 @@ export default function EditorSection({
       <Row gap="1rem">
         <Button
           onClick={() => {
-            setActAs({ label: "Student", value: "user" });
-            router.push(`/pages/${type}/${slug}`);
+            router.push(getViewPath(type, slug));
           }}
         >
           Close editor
@@ -75,18 +118,17 @@ export default function EditorSection({
           required
         />
       </Row>
-      <Row gap="1rem">
-        <label htmlFor="title">Slug</label>
-        <input
-          type="text"
-          id="title"
-          value={slugInput}
-          onInput={(e) => {
-            setSlugInput(e.target.value.replace(/[^A-Za-z0-9\-\_\+]/g, ""));
-          }}
-          required
-        />
-      </Row>
+      {supportsDescription && (
+        <Column gap="0.5rem">
+          <label htmlFor="description">Beschreibung</label>
+          <textarea
+            id="description"
+            rows={4}
+            value={descriptionInput}
+            onChange={(e) => setDescriptionInput(e.target.value)}
+          />
+        </Column>
+      )}
       <Row justify="space-between" pb="xl">
         <Editor
           defaultContent={editorContent}

@@ -1,18 +1,23 @@
-"use client";
-
 import Link from "next/link";
 import { Column } from "@/components/ui/layout/container";
 import { LinkButton } from "@/components/ui/linkbutton";
-import { chapters } from "@/app/grammar/alphabetical/chapters";
+import { getAlphabeticalGrammarPages } from "@/backend/html-services";
 
-export default function Chapter() {
+export const dynamic = "force-dynamic";
+
+export default async function Chapter() {
+  const chapters = await getAlphabeticalGrammarPages();
+
   return (
     <Column gap="md">
       <LinkButton href="/grammar/themes">Themen der Grammatik</LinkButton>
       <h1>Grammatik in alphabetischer Reihenfolge</h1>
 
       {chapters.map((chapter) => (
-        <Link key={chapter.id} href={chapter.link}>
+        <Link
+          key={chapter.slug}
+          href={`/grammar/themes/${encodeURIComponent(chapter.slug)}?view=alphabetical`}
+        >
           {chapter.title}
         </Link>
       ))}
