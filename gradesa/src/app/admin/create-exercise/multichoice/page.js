@@ -1,15 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import useQuery from "@/shared/hooks/useQuery";
 import "./multichoice.css";
 
 export default function CreateMultichoicePage() {
   const router = useRouter();
-  const { exercise_id } = useParams();
-  const isEditMode = Boolean(exercise_id);
-
   const [title, setTitle] = useState("");
 
   const [sections, setSections] = useState([
@@ -31,63 +27,6 @@ export default function CreateMultichoicePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [titleError, setTitleError] = useState(false);
-
-  const {
-    data: exerciseData,
-    isLoading: isExerciseLoading,
-    error: exerciseError,
-  } = useQuery(`/admin/exercises/multichoice/${exercise_id || ""}`, null, {
-    enabled: isEditMode,
-  });
-
-  useEffect(() => {
-    if (!isEditMode || !exerciseData) {
-      return;
-    }
-
-    setTitle(exerciseData.title || "");
-
-    const mappedSections = (exerciseData.content || []).map((item) => {
-      if (item.content_type === "multichoice") {
-        const options = Array.isArray(item.options) ? item.options : [];
-        const correctIndex = options.findIndex(
-          (option) => option === item.correct_answer
-        );
-
-        return {
-          id: String(item.id || crypto.randomUUID()),
-          type: "multichoice",
-          options: options.length > 0 ? options : ["Option 1", "Option 2"],
-          correct: correctIndex >= 0 ? correctIndex : 0,
-        };
-      }
-
-      if (item.content_type === "gap") {
-        return {
-          id: String(item.id || crypto.randomUUID()),
-          type: "gap",
-          value: item.content_value || "___",
-          correct: item.correct_answer || "",
-        };
-      }
-
-      if (item.content_type === "linebreak") {
-        return {
-          id: String(item.id || crypto.randomUUID()),
-          type: "linebreak",
-        };
-      }
-
-      return {
-        id: String(item.id || crypto.randomUUID()),
-        type: "text",
-        value: item.content_value || "",
-      };
-    });
-
-    setSections(mappedSections);
-    setActiveSectionIndex(null);
-  }, [exerciseData, isEditMode]);
 
   // --- Actions ---
 
@@ -162,12 +101,8 @@ export default function CreateMultichoicePage() {
         return section;
       });
 
-      const endpoint = isEditMode
-        ? `/api/admin/exercises/multichoice/${exercise_id}`
-        : "/api/admin/exercises/multichoice";
-
-      const res = await fetch(endpoint, {
-        method: isEditMode ? "PUT" : "POST",
+      const res = await fetch("/api/admin/exercises/multichoice", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
@@ -182,7 +117,7 @@ export default function CreateMultichoicePage() {
         throw new Error(data.error || "Fehler beim Speichern");
       }
 
-      router.push("/grammar/exercises/multichoice");
+      router.push("/admin/create-exercise");
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -191,25 +126,9 @@ export default function CreateMultichoicePage() {
     }
   };
 
-  if (isEditMode && isExerciseLoading) {
-    return <div className="admin-container">Lädt...</div>;
-  }
-
-  if (isEditMode && exerciseError) {
-    return (
-      <div className="admin-container">
-        Fehler: {exerciseError.error || exerciseError.message || "Unbekannt"}
-      </div>
-    );
-  }
-
   return (
     <div className="admin-container">
-      <h1>
-        {isEditMode
-          ? "Multiple Choice Übung bearbeiten"
-          : "Multiple Choice Übung erstellen"}
-      </h1>
+      <h1>Multiple Choice Übung erstellen</h1>
 
       {error && <div className="error-message">{error}</div>}
 
@@ -321,7 +240,7 @@ export default function CreateMultichoicePage() {
             + Text
           </Button>
           <Button size="sm" width="fit" onClick={addMultiChoiceSection}>
-            + Auswahl
+            + Runterfallen
           </Button>
           <Button size="sm" width="fit" onClick={addGapSection}>
             + Lücke
@@ -430,24 +349,14 @@ export default function CreateMultichoicePage() {
       {/* --- Main Action Buttons --- */}
       <div className="main-actions">
         <Button onClick={handleSubmit} disabled={isSubmitting || !title}>
-          {isSubmitting
-            ? "Speichern..."
-            : isEditMode
-              ? "Änderungen speichern"
-              : "Erstellen"}
+          {isSubmitting ? "Speichern..." : "Erstellen"}
         </Button>
         <Button variant="secondary" onClick={() => setShowPreview(true)}>
           Vorschau
         </Button>
         <Button
           variant="tertiary"
-          onClick={() =>
-            router.push(
-              isEditMode
-                ? "/grammar/exercises/multichoice"
-                : "/admin/create-exercise"
-            )
-          }
+          onClick={() => router.push("/admin/create-exercise")}
         >
           Abbrechen
         </Button>

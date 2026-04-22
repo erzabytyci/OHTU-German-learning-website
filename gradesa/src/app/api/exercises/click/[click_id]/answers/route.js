@@ -33,7 +33,7 @@ export const POST = withAuth(async (request, { params }) => {
         status: 201,
       }
     );
-  } catch {
+  } catch (error) {
     return new Response(JSON.stringify({ error: "Interner Serverfehler." }), {
       status: 500,
     });

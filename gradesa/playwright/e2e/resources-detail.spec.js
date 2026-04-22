@@ -2,8 +2,6 @@ const { test, expect } = require("@playwright/test");
 
 test.describe("Resources Detail Pages", () => {
   test("should display chapter content", async ({ page }) => {
-    test.setTimeout(60000);
-
     await page.goto("/pages/resources/1", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/.*pages\/resources\/1/);
     await expect(page.getByRole("main").first()).toBeVisible();
@@ -13,10 +11,8 @@ test.describe("Resources Detail Pages", () => {
   });
 
   test("should navigate between chapters", async ({ page }) => {
-    test.setTimeout(90000);
-
     await page.goto("/pages/resources/1", {
-      waitUntil: "domcontentloaded",
+      waitUntil: "commit",
       timeout: 60000,
     });
     await expect(page).toHaveURL(/.*pages\/resources\/1/);
@@ -28,7 +24,7 @@ test.describe("Resources Detail Pages", () => {
     const href = await nextLink.getAttribute("href");
     await expect(href).toBeTruthy();
 
-    await page.goto(href, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.goto(href, { waitUntil: "commit", timeout: 60000 });
 
     await expect(page).toHaveURL(/.*pages\/resources\/2/);
     await expect(page.getByRole("main").first()).toBeVisible();
@@ -37,8 +33,6 @@ test.describe("Resources Detail Pages", () => {
   test("should return to resources index from chapter page", async ({
     page,
   }) => {
-    test.setTimeout(60000);
-
     await page.goto("/pages/resources/1", { waitUntil: "domcontentloaded" });
 
     const resourcesLink = page.getByRole("link", {
@@ -59,8 +53,6 @@ test.describe("Resources Detail Pages", () => {
   test("should show chapter content with text and possibly images", async ({
     page,
   }) => {
-    test.setTimeout(60000);
-
     await page.goto("/pages/resources/1", { waitUntil: "domcontentloaded" });
 
     const paragraphs = page.locator("p");

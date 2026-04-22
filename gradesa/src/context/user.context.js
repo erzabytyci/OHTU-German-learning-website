@@ -246,9 +246,7 @@ export function useIsSuperAdmin() {
  *
  * @returns {boolean} true when the user is an admin, otherwise false.
  */
-// eslint-disable-next-line react-hooks/rules-of-hooks
-export function checkIsAdmin() {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+export function checkUseIsAdmin() {
   const { auth } = useUser();
 
   if (!auth.user?.id) return false;
